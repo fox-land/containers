@@ -1,0 +1,26 @@
+ARG ARG_DISTRO_VARIANT
+FROM debian:${ARG_DISTRO_VARIANT}
+
+RUN apt-get update \
+	&& apt-get upgrade -y \
+	&& apt-get install -y
+
+ARG ARG_GIT_COMMIT
+RUN \
+	: "${ARG_GIT_COMMIT:?}"
+
+RUN useradd \
+	--comment 'Fox' \
+	--home-dir '/home/fox' \
+	--expiredate '' \
+	--inactive '-1' \
+	--create-home \
+	--password 'password' \
+	--shell '/bin/bash' \
+	--user-group \
+	'fox' \
+	&& mkdir -p '/fox' \
+	&& printf '%s\n' "$ARG_GIT_COMMIT" > '/fox/git-commit' 
+
+WORKDIR '/home/fox'
+USER fox
