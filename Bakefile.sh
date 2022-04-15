@@ -1,7 +1,18 @@
 # shellcheck shell=bash
 
+# 				--label org.opencontainers.image.vendor="" \
+# --label org.opencontainers.image.licenses="" \
+# 				--label org.opencontainers.image.version="" \
+
+# ubuntu: bionic, focal, jammy (beta)
+# debian: stretch, buster, bullseye
+# centos: centos7
+# opensuseleap: 15.3, 15.4 (beta)
+# centos-stream: stream8 stream9
+# fedora: 35
+
 task.build() {
-	local docker_args=()
+	local -a docker_args=()
 
 	for arg do case $arg in
 	--bypass-cache)
@@ -11,13 +22,8 @@ task.build() {
 	local commit=
 	commit=$(git rev-parse --short HEAD)
 
-	# ubuntu: bionic, focal, jammy (beta)
-	# debian: stretch, buster, bullseye
-	# centos: centos7
-	# opensuseleap: 15.3, 15.4 (beta)
-	# centos-stream: stream8 stream9
-	# fedora: 35
-	local {_,distro,distro_variants}=
+
+	local {pair,distro,distro_variants}=
 	for pair in \
 		'debian|bullseye:buster:stretch' \
 		'ubuntu|jammy:focal:bionic'
@@ -47,10 +53,8 @@ task.build() {
 				--tag "ghcr.io/hyperupcall/fox.$distro-$distro_variant" \
 				"${docker_args[@]}" \
 				"./$distro"
+
+				docker push "ghcr.io/hyperupcall/fox.$distro-$distro_variant:latest"
 		done
 	done
 }
-
-# 				--label org.opencontainers.image.vendor="" \
-# --label org.opencontainers.image.licenses="" \
-# 				--label org.opencontainers.image.version="" \
