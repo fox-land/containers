@@ -1,9 +1,10 @@
 ARG ARG_DISTRO_VARIANT
 FROM debian:${ARG_DISTRO_VARIANT}
 
-RUN apt-get update \
-	&& apt-get upgrade -y \
-	&& apt-get install -y
+RUN : \
+	&& DEBIAN_FRONTEND='noninteractive' apt-get update -y \
+	&& DEBIAN_FRONTEND='noninteractive' apt-get install -y --no-install-recommends 'apt-utils' 'apt-transport-https' \
+	&& DEBIAN_FRONTEND='noninteractive' apt-get upgrade -y
 
 ARG ARG_GIT_COMMIT
 RUN \
@@ -20,7 +21,7 @@ RUN useradd \
 	--user-group \
 	'fox' \
 	&& mkdir -p '/fox' \
-	&& printf '%s\n' "$ARG_GIT_COMMIT" > '/fox/git-commit' 
+	&& printf '%s\n' "$ARG_GIT_COMMIT" > '/fox/git-commit'
 
 WORKDIR '/home/fox'
 USER fox
