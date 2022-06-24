@@ -1,5 +1,5 @@
 # shellcheck shell=bash
 
-task.build() {
+task.run() {
 	go run . "$@"
 }

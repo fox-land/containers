@@ -27,6 +27,39 @@ func handle(err error) {
 	}
 }
 
+func buildBash() error {
+	os.Chdir("./containers/bash")
+	for _, version := range []string{"4.3", "4.4", "5.0", "5.1"} {
+		dockerBuild := exec.Command("docker", []string{
+			"build",
+			"--file", "./" + version + ".Containerfile",
+			"--tag", fmt.Sprintf("fox.%s:%s", "bash", version),
+			"--tag", fmt.Sprintf("ghcr.io/hyperupcall/fox.%s:%s", "bash", version),
+			"--label", "org.opencontainers.image.source=" + fmt.Sprintf("https://github.com/%s", "hyperupcall/containers"),
+			".",
+		}...)
+		dockerBuild.Stdin = os.Stdin
+		dockerBuild.Stdout = os.Stdout
+		dockerBuild.Stderr = os.Stderr
+		err := dockerBuild.Run()
+		if err != nil {
+			return fmt.Errorf("%s", err)
+		}
+
+		dockerPush := exec.Command("docker", "push", fmt.Sprintf("ghcr.io/hyperupcall/fox.%s:%s", "bash", version))
+		dockerPush.Stdin = os.Stdin
+		dockerPush.Stdout = os.Stdout
+		dockerBuild.Stderr = os.Stderr
+		err = dockerPush.Run()
+		if err != nil {
+			return fmt.Errorf("%s", err)
+		}
+
+	}
+
+	return nil
+}
+
 func build(bypassCache bool, noPush bool, container string) error {
 	rawCommit, err := exec.Command("git", "rev-parse", "--short", "HEAD").Output()
 	commit := strings.TrimSpace(string(rawCommit))
@@ -140,22 +173,35 @@ func main() {
 				Email: "edwin@kofler.dev",
 			},
 		},
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:  "bypass-cache",
-				Usage: "Bypass the cache",
+		Commands: []*cli.Command{
+			{
+				Name:  "build",
+				Usage: "Build containers",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "bypass-cache",
+						Usage: "Bypass the cache",
+					},
+					&cli.BoolFlag{
+						Name:  "no-push",
+						Usage: "Do not push to the OCI Registry",
+					},
+					&cli.StringFlag{
+						Name:  "container",
+						Usage: "Build a specific container",
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					return build(ctx.Bool("bypass-cache"), ctx.Bool("no-push"), ctx.String("container"))
+				},
 			},
-			&cli.BoolFlag{
-				Name:  "no-push",
-				Usage: "Do not push to the OCI Registry",
+			{
+				Name:  "bash",
+				Usage: "Do Bash things",
+				Action: func(ctx *cli.Context) error {
+					return buildBash()
+				},
 			},
-			&cli.StringFlag{
-				Name:  "container",
-				Usage: "Build a specific container",
-			},
-		},
-		Action: func(ctx *cli.Context) error {
-			return build(ctx.Bool("bypass-cache"), ctx.Bool("no-push"), ctx.String("container"))
 		},
 	}
 
