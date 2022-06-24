@@ -27,13 +27,14 @@ func handle(err error) {
 	}
 }
 
-func build(bypassCache bool) error {
+func build(bypassCache bool, noPush bool, container string) error {
 	rawCommit, err := exec.Command("git", "rev-parse", "--short", "HEAD").Output()
 	commit := strings.TrimSpace(string(rawCommit))
 	handle(err)
 
 	fmt.Printf("Current Git Commit: %s\n", commit)
 
+	hasRanAtLeastOnce := false
 	for _, pair := range []struct {
 		distro   string
 		variants []string
@@ -48,6 +49,17 @@ func build(bypassCache bool) error {
 		},
 	} {
 		for _, variant := range pair.variants {
+			if len(container) > 0 {
+				arr := strings.Split(container, ":")
+				specifiedDistro := arr[0]
+				specifiedVariant := arr[1]
+
+				if specifiedDistro != pair.distro || specifiedVariant != variant {
+					continue
+				}
+			}
+			hasRanAtLeastOnce = true
+
 			rawDate, err := exec.Command("date", "--rfc-3339=seconds").Output()
 			handle(err)
 			date := strings.TrimSpace(string(rawDate))
@@ -95,15 +107,23 @@ func build(bypassCache bool) error {
 				log.Fatalln(err)
 			}
 
-			dockerPush := exec.Command("docker", "push", fmt.Sprintf("ghcr.io/hyperupcall/fox.%s:latest", pair.distro))
-			dockerPush.Stdin = os.Stdin
-			dockerPush.Stdout = os.Stdout
-			dockerPush.Stderr = os.Stderr
-			err = dockerPush.Run()
-			if err != nil {
-				log.Fatalln(err)
+			if noPush {
+				fmt.Println("Skipping push...")
+			} else {
+				dockerPush := exec.Command("docker", "push", fmt.Sprintf("ghcr.io/hyperupcall/fox.%s:latest", pair.distro))
+				dockerPush.Stdin = os.Stdin
+				dockerPush.Stdout = os.Stdout
+				dockerPush.Stderr = os.Stderr
+				err = dockerPush.Run()
+				if err != nil {
+					log.Fatalln(err)
+				}
 			}
 		}
+	}
+
+	if !hasRanAtLeastOnce {
+		return fmt.Errorf("No containers were either build or pushed")
 	}
 
 	return nil
@@ -129,9 +149,13 @@ func main() {
 				Name:  "no-push",
 				Usage: "Do not push to the OCI Registry",
 			},
+			&cli.StringFlag{
+				Name:  "container",
+				Usage: "Build a specific container",
+			},
 		},
 		Action: func(ctx *cli.Context) error {
-			return build(ctx.Bool("bypass-cache"))
+			return build(ctx.Bool("bypass-cache"), ctx.Bool("no-push"), ctx.String("container"))
 		},
 	}
 
