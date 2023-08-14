@@ -7,17 +7,16 @@ RUN : \
 	&& DEBIAN_FRONTEND='noninteractive' apt-get upgrade -y
 
 RUN useradd \
-	--comment 'Fox' \
-	--home-dir '/home/fox' \
+	--comment 'User' \
+	--home-dir '/home/user' \
 	--expiredate '' \
 	--inactive '-1' \
 	--create-home \
 	--password 'password' \
 	--shell '/bin/bash' \
 	--user-group \
-	'fox' \
-	&& mkdir -p '/fox' \
+	'user' \
+	&& mkdir -p '/user' \
 	&& printf '%s\n' "$ARG_GIT_COMMIT" > '/fox/git-commit'
-
-WORKDIR '/home/fox'
-USER fox
+USER user
+WORKDIR '/home/user'
